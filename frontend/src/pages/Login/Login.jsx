@@ -3,34 +3,75 @@ import api from "../../services/api";
 import "./Login.css";
 
 function Login({ onLogin }) {
+  const [isRegister, setIsRegister] = useState(false);
+
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError("");
+    setSuccess("");
+
+    if (isRegister && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await api.post("/auth/login", {
-        email,
-        password,
-      });
+      if (isRegister) {
+        // Register new user
+        const response = await api.post("/auth/register", {
+          name,
+          email,
+          password,
+        });
 
-      localStorage.setItem("token", response.data.token);
+        localStorage.setItem("token", response.data.token);
 
-      onLogin();
+        setSuccess("Account created successfully!");
+
+        onLogin();
+      } else {
+        // Login existing user
+        const response = await api.post("/auth/login", {
+          email,
+          password,
+        });
+
+        localStorage.setItem("token", response.data.token);
+
+        onLogin();
+      }
     } catch (error) {
       setError(
         error.response?.data?.message ||
-          "Login failed. Please check your credentials."
+          (isRegister
+            ? "Registration failed. Please try again."
+            : "Login failed. Please check your credentials.")
       );
     } finally {
       setLoading(false);
     }
+  };
+
+  const switchMode = () => {
+    setIsRegister(!isRegister);
+    setError("");
+    setSuccess("");
+    setName("");
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
   };
 
   return (
@@ -47,14 +88,38 @@ function Login({ onLogin }) {
         <div className="login-card">
 
           <div className="login-header">
-            <span className="login-eyebrow">WELCOME BACK</span>
-            <h2>Sign in to your account</h2>
+            <span className="login-eyebrow">
+              {isRegister ? "GET STARTED" : "WELCOME BACK"}
+            </span>
+
+            <h2>
+              {isRegister
+                ? "Create your account"
+                : "Sign in to your account"}
+            </h2>
+
             <p>
-              Complete secure CAPTCHA challenges and earn rewards.
+              {isRegister
+                ? "Create an account and start earning rewards."
+                : "Complete secure CAPTCHA challenges and earn rewards."}
             </p>
           </div>
 
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleSubmit}>
+
+            {isRegister && (
+              <div className="form-group">
+                <label>Full Name</label>
+
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
 
             <div className="form-group">
               <label>Email Address</label>
@@ -77,12 +142,34 @@ function Login({ onLogin }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
+
+            {isRegister && (
+              <div className="form-group">
+                <label>Confirm Password</label>
+
+                <input
+                  type="password"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
 
             {error && (
               <div className="login-error">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="login-success">
+                {success}
               </div>
             )}
 
@@ -91,10 +178,32 @@ function Login({ onLogin }) {
               className="login-button"
               disabled={loading}
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading
+                ? isRegister
+                  ? "Creating account..."
+                  : "Signing in..."
+                : isRegister
+                ? "Create Account"
+                : "Sign In"}
             </button>
 
           </form>
+
+          <div className="login-switch">
+            <span>
+              {isRegister
+                ? "Already have an account?"
+                : "Don't have an account?"}
+            </span>
+
+            <button
+              type="button"
+              onClick={switchMode}
+              className="login-switch-button"
+            >
+              {isRegister ? "Sign In" : "Create Account"}
+            </button>
+          </div>
 
           <div className="login-footer">
             <span>Secure authentication</span>
@@ -103,7 +212,6 @@ function Login({ onLogin }) {
           </div>
 
         </div>
-
       </div>
     </div>
   );
